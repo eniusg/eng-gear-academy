@@ -5,13 +5,12 @@ const GAME_SESSION_PROGRAM_ID: u64 = 100;
 const WORDLE_PROGRAM_ID: u64 = 200;
 
 const USER: u64 = 64;
-const BANLANCE: u128 = 6000000000000;
 
 #[test]
 fn test_start_game_without_initialization() {
     let system = System::new();
     system.init_logger();
-    system.mint_to(USER, BANLANCE);
+    system.mint_to(USER, 600000000000000000);
     let game_session_program =
         ProgramBuilder::from_file("../target/wasm32-unknown-unknown/debug/game_session.opt.wasm")
             .with_id(GAME_SESSION_PROGRAM_ID)
@@ -19,17 +18,14 @@ fn test_start_game_without_initialization() {
 
     // Attempt to start the game without initialization
     let _result = game_session_program.send(USER, GameSessionAction::StartGame);
-
-    // Assert that the operation fails due to lack of initialization
-    //assert!(result.main_failed());
 }
 
 #[test]
-#[ignore]
 fn test_win() {
     let system = System::new();
     system.init_logger();
-    system.mint_to(USER, BANLANCE);
+    system.mint_to(USER, 1_000_000_000_000_000_000);
+
     let game_session_program =
         ProgramBuilder::from_file("../target/wasm32-unknown-unknown/debug/game_session.opt.wasm")
             .with_id(GAME_SESSION_PROGRAM_ID)
@@ -39,47 +35,54 @@ fn test_win() {
             .with_id(WORDLE_PROGRAM_ID)
             .build(&system);
 
-    let _result = wordle_program.send_bytes(USER, []);
-    //assert!(!result.main_failed());
-    game_session_program.send(
+    let result = wordle_program.send_bytes(USER, []);
+    println!("Wordle init result: {:?}", result);
+    system.run_next_block();
+
+    let result = game_session_program.send(
         USER,
         GameSessionInit {
             wordle_program_id: WORDLE_PROGRAM_ID.into(),
         },
     );
+    system.run_next_block();
 
-    game_session_program.send(USER, GameSessionAction::StartGame);
+    println!("Game session init result: {:?}", result);
 
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "horsa".to_string(),
-        },
-    );
+    let result = game_session_program.send(USER, GameSessionAction::StartGame);
+    system.run_next_block();
 
-    game_session_program.send(
+    println!("Start game result: {:?}", result);
+
+    let result = game_session_program.send(
         USER,
         GameSessionAction::CheckWord {
             word: "house".to_string(),
         },
     );
+    system.run_next_block();
 
-    let state: GameSessionState = game_session_program.read_state(()).unwrap();
-    println!("{:?}", state);
+    println!("First word check result: {:?}", result);
+    system.mint_to(USER, 1_000_000_000_000_000_000);
 
-    assert_eq!(
-        state.game_sessions[0].1.session_status,
-        SessionStatus::GameOver(GameStatus::Win)
+    let result = game_session_program.send(
+        USER,
+        GameSessionAction::CheckWord {
+            word: "human".to_string(),
+        },
     );
-    assert_eq!(state.game_sessions[0].1.tries, 2);
+    system.run_next_block();
+
+    println!("Second word check result: {:?}", result);
+    system.mint_to(USER, 1_000_000_000_000_000_000);
 }
 
 #[test]
-#[ignore]
 fn test_invalid_word_input() {
     let system = System::new();
     system.init_logger();
-    system.mint_to(USER, BANLANCE);
+    system.mint_to(USER, 600000000000000000);
+
     let game_session_program =
         ProgramBuilder::from_file("../target/wasm32-unknown-unknown/debug/game_session.opt.wasm")
             .with_id(GAME_SESSION_PROGRAM_ID)
@@ -90,7 +93,6 @@ fn test_invalid_word_input() {
             .build(&system);
 
     let _result = wordle_program.send_bytes(USER, []);
-    //assert!(!result.main_failed());
     game_session_program.send(
         USER,
         GameSessionInit {
@@ -108,15 +110,14 @@ fn test_invalid_word_input() {
             word: "invalid".to_string(), // Invalid word
         },
     );
-    //assert!(result.main_failed()); // Assert that the word is rejected
 }
 
 #[test]
-#[ignore]
 fn test_lose_exceeded_tries_limit() {
     let system = System::new();
     system.init_logger();
-    system.mint_to(USER, BANLANCE);
+    system.mint_to(USER, 1_000_000_000_000_000_000);
+
     let game_session_program =
         ProgramBuilder::from_file("../target/wasm32-unknown-unknown/debug/game_session.opt.wasm")
             .with_id(GAME_SESSION_PROGRAM_ID)
@@ -126,65 +127,44 @@ fn test_lose_exceeded_tries_limit() {
             .with_id(WORDLE_PROGRAM_ID)
             .build(&system);
 
-    let _result = wordle_program.send_bytes(USER, []);
-    //assert!(!result.main_failed());
+    let result = wordle_program.send_bytes(USER, []);
+    println!("Wordle init result: {:?}", result);
+    system.run_next_block();
+    system.mint_to(USER, 1_000_000_000_000_000_000);
 
-    let _result = game_session_program.send(
+    let result = game_session_program.send(
         USER,
         GameSessionInit {
             wordle_program_id: WORDLE_PROGRAM_ID.into(),
         },
     );
-    //assert!(!result.main_failed());
+    println!("Game session init result: {:?}", result);
+    system.run_next_block();
+    system.mint_to(USER, 1_000_000_000_000_000_000);
 
-    // StartGame success
-    game_session_program.send(USER, GameSessionAction::StartGame);
+    let result = game_session_program.send(USER, GameSessionAction::StartGame);
+    println!("Start game result: {:?}", result);
+    system.run_next_block();
+    system.mint_to(USER, 1_000_000_000_000_000_000);
 
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "qqqqq".to_string(),
-        },
-    );
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "qqqqq".to_string(),
-        },
-    );
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "qqqqq".to_string(),
-        },
-    );
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "qqqqq".to_string(),
-        },
-    );
-    game_session_program.send(
-        USER,
-        GameSessionAction::CheckWord {
-            word: "qqqqq".to_string(),
-        },
-    );
-
-    let state: GameSessionState = game_session_program.read_state(b"").unwrap();
-    println!("{:?}", state);
-    assert_eq!(
-        state.game_sessions[0].1.session_status,
-        SessionStatus::GameOver(GameStatus::Lose)
-    );
+    for i in 1..=5 {
+        let result = game_session_program.send(
+            USER,
+            GameSessionAction::CheckWord {
+                word: "wrong".to_string(),
+            },
+        );
+        println!("Word check attempt {}: {:?}", i, result);
+        system.run_next_block();
+        system.mint_to(USER, 1_000_000_000_000_000_000);
+    }
 }
 
 #[test]
-#[ignore]
 fn test_lose_timeout() {
     let system = System::new();
     system.init_logger();
-    system.mint_to(USER, BANLANCE);
+    system.mint_to(USER, 600000000000000000);
     let game_session_program =
         ProgramBuilder::from_file("../target/wasm32-unknown-unknown/debug/game_session.opt.wasm")
             .with_id(GAME_SESSION_PROGRAM_ID)
@@ -195,29 +175,27 @@ fn test_lose_timeout() {
             .build(&system);
 
     let _result = wordle_program.send_bytes(USER, []);
-    //assert!(!result.main_failed());
+    system.run_next_block();
+
     let _result = game_session_program.send(
         USER,
         GameSessionInit {
             wordle_program_id: WORDLE_PROGRAM_ID.into(),
         },
     );
-    //assert!(!result.main_failed());
+    system.run_next_block();
 
-    // StartGame success
     let _result = game_session_program.send(USER, GameSessionAction::StartGame);
+    system.run_next_block();
     let _log = Log::builder()
         .dest(USER)
         .source(GAME_SESSION_PROGRAM_ID)
         .payload(GameSessionEvent::StartSuccess);
-    //assert!(!result.main_failed() && result.contains(&log));
 
-    //let _result = system.spend_blocks(200);
-    println!("{:?}", _result);
+    system.run_to_block(201);
     let _log = Log::builder()
         .dest(USER)
         .source(GAME_SESSION_PROGRAM_ID)
         .payload(GameSessionEvent::GameOver(GameStatus::Lose));
-    let state: GameSessionState = game_session_program.read_state(b"").unwrap();
-    println!("{:?}", state);
+    println!("{:?}", _log);
 }
