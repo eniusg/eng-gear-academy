@@ -32,7 +32,8 @@ extern "C" fn handle() {
         GameSessionAction::StartGame => {
             let user = msg::source();
             let session_info = game_session.sessions.entry(user).or_default();
-            debug!("handle:{:?}", session_info);
+            debug!("handle:{:?}", user);
+            debug!("session_info:{:?}", session_info);
             match &session_info.session_status {
                 SessionStatus::ReplyReceived(_wordle_event) => {
                     session_info.session_status = SessionStatus::WaitUserInput;
@@ -64,7 +65,7 @@ extern "C" fn handle() {
                     session_info.send_to_wordle_msg_id = send_to_wordle_msg_id;
                     session_info.tries = 0;
                     session_info.session_status = SessionStatus::WaitWordleStartReply;
-
+                    debug!("session_info:{:?}", session_info);
                     exec::wait();
                 }
                 SessionStatus::WaitUserInput | SessionStatus::WaitWordleCheckWordReply => {
@@ -73,6 +74,7 @@ extern "C" fn handle() {
             }
         }
         GameSessionAction::CheckWord { word } => {
+            debug!("CheckWord:{:?}", word);
             let user = msg::source();
             let session_info = game_session.sessions.entry(user).or_default();
             match &session_info.session_status {
@@ -138,6 +140,7 @@ extern "C" fn handle() {
 
 #[no_mangle]
 extern "C" fn handle_reply() {
+    debug!("handle_reply");
     let reply_to = msg::reply_to().expect("Failed to query reply_to data");
     let wordle_event: WordleEvent = msg::load().expect("Unable to decode WordleEvent");
 
